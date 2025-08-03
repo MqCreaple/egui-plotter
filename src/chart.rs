@@ -27,7 +27,7 @@ pub const DEFAULT_SCROLL_SCALE: f32 = 0.001;
 /// chart.with_projection(|mut pb| {
 ///     pb.yaw = transform.yaw;
 ///     pb.pitch = transform.pitch;
-///     pb.scale = 0.7; // Set scale to 0.7 to avoid artifacts caused by plotter's renderer
+///     pb.zoom = 0.7; // Set zoom to 0.7 to avoid artifacts caused by plotter's renderer
 ///     pb.into_matrix()
 /// });
 ///```
@@ -36,6 +36,8 @@ pub struct Transform {
     pub pitch: f64,
     /// Yaw of your graph in 3d
     pub yaw: f64,
+    /// Zoom of your graph in 3d, not to be confused with `scale`.
+    pub zoom: f64,
     /// Scale of your graph. Applied in Chart::draw()
     pub scale: f64,
     /// X offset of your graph. Applied in Chart::draw()
@@ -49,6 +51,7 @@ impl Default for Transform {
         Self {
             pitch: 0.0,
             yaw: 0.0,
+            zoom: 1.0,
             scale: 1.0,
             x: 0,
             y: 0,
@@ -300,6 +303,20 @@ impl<Data> Chart<Data> {
     }
 
     #[inline]
+    /// Set the zoom of the chart.
+    pub fn set_zoom(&mut self, zoom: f64) {
+        self.transform.zoom = zoom
+    }
+
+    #[inline]
+    /// Set the zoom of the chart. Consumes self.
+    pub fn zoom(mut self, zoom: f64) -> Self {
+        self.set_zoom(zoom);
+
+        self
+    }
+
+    #[inline]
     /// Set the scale of the chart.
     pub fn set_scale(&mut self, scale: f64) {
         self.transform.scale = scale
@@ -354,10 +371,9 @@ impl<Data> Chart<Data> {
 
             // Adjust zoom if zoom is enabled
             if self.mouse.zoom {
-                let scale_delta = input.raw_scroll_delta.y * self.mouse.zoom_scale;
+                let zoom_delta = input.raw_scroll_delta.y * self.mouse.zoom_scale;
 
-                // !TODO! make scaling exponential
-                transform.scale = (transform.scale + scale_delta as f64).abs();
+                transform.zoom *= f64::exp(zoom_delta as f64);
             }
         });
 

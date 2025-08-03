@@ -54,7 +54,7 @@ impl Chart3d {
                 chart.with_projection(|mut pb| {
                     pb.yaw = transform.yaw;
                     pb.pitch = transform.pitch;
-                    pb.scale = 0.7; // Set scale to 0.7 to avoid artifacts caused by plotter's renderer
+                    pb.scale = transform.zoom;
                     pb.into_matrix()
                 });
 
