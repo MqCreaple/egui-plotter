@@ -6,9 +6,8 @@ use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::ops::{Add, AddAssign, MulAssign, Sub, SubAssign};
 
 use egui::{
-    Mesh,
-    epaint::{PathShape, TextShape, Vertex},
-    Align, Align2, Color32, FontFamily as EguiFontFamily, FontId, Pos2, Rect, Stroke, Ui,
+    epaint::{PathShape, TextShape},
+    Align, Align2, Color32, FontFamily as EguiFontFamily, FontId, Pos2, Rect, Stroke, Ui, CornerRadius,
 };
 use plotters_backend::{
     text_anchor::{HPos, Pos, VPos},
@@ -315,7 +314,7 @@ impl<'a> DrawingBackend for EguiBackend<'a> {
                     min: p0.into(),
                     max: p1.into(),
                 },
-                Rounding::default(),
+                CornerRadius::default(),
                 color,
             );
         } else {
@@ -325,9 +324,10 @@ impl<'a> DrawingBackend for EguiBackend<'a> {
                     min: p0.into(),
                     max: p1.into(),
                 },
-                Rounding::default(),
+                CornerRadius::default(),
                 Color32::TRANSPARENT,
                 stroke,
+                egui::StrokeKind::Inside
             );
         }
 
