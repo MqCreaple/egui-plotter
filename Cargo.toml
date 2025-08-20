@@ -18,6 +18,7 @@ timechart = ["dep:instant"]
 egui = "0.32.1"
 plotters-backend = "0.3"
 plotters = "0.3"
+earcutr = "0.4.3"
 # if you are using egui then chances are you're using trunk which uses wasm bindgen
 instant = { version = "0.1", features = ["wasm-bindgen"], optional = true }
 
