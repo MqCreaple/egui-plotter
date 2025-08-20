@@ -15,7 +15,7 @@ fn main() {
     eframe::run_native(
         "3d Example",
         native_options,
-        Box::new(|cc| Box::new(ThreeD::new(cc))),
+        Box::new(|cc| Ok(Box::new(ThreeD::new(cc)))),
     )
     .unwrap();
 }
@@ -56,7 +56,7 @@ impl eframe::App for ThreeD {
                     true => (delta.y * MOVE_SCALE, -delta.x * MOVE_SCALE),
                     false => (self.chart_pitch_vel, self.chart_yaw_vel),
                 };
-
+              
                 let scale_delta = input.smooth_scroll_delta.y * SCROLL_SCALE;
 
                 (pitch_delta, yaw_delta, scale_delta)
