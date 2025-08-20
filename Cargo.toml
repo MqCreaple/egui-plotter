@@ -1,7 +1,7 @@
 [package]
 name = "egui-plotter"
-version = "0.3.0"
-edition = "2021"
+version = "0.5.0"
+edition = "2024"
 authors = ["Charles Thompson"]
 license = "MIT"
 readme = "README.md"
@@ -9,24 +9,23 @@ keywords = ["plotters", "plotter", "egui", "backend"]
 categories = ["graphics", "gui", "mathematics", "rendering", "visualization"]
 description = "Simple to use utilties for integrating plotter into egui"
 repository = "https://github.com/Gip-Gip/egui-plotter"
-exclude = [
-    "images"
-]
+exclude = ["images"]
 
 [features]
 timechart = ["dep:instant"]
 
 [dependencies]
-egui = "0.22" 
+egui = "0.32.1"
 plotters-backend = "0.3"
 plotters = "0.3"
+earcutr = "0.4.3"
 # if you are using egui then chances are you're using trunk which uses wasm bindgen
 instant = { version = "0.1", features = ["wasm-bindgen"], optional = true }
 
 [dev-dependencies]
-eframe = "0.22.0"
+eframe = "0.32.1"
 # Hacky way to enable features during testing
-egui-plotter = { path = ".", version = "0.3.0", features = ["timechart"]}
+egui-plotter = { path = ".", features = ["timechart"] }
 
 [package.metadata.docs.rs]
 features = ["timechart"]

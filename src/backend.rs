@@ -6,8 +6,9 @@ use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::ops::{Add, AddAssign, MulAssign, Sub, SubAssign};
 
 use egui::{
-    epaint::{PathShape, TextShape},
-    Align, Align2, Color32, FontFamily as EguiFontFamily, FontId, Pos2, Rect, Rounding, Stroke, Ui,
+    Mesh,
+    epaint::{PathShape, TextShape, Vertex},
+    Align, Align2, Color32, FontFamily as EguiFontFamily, FontId, Pos2, Rect, Stroke, Ui,
 };
 use plotters_backend::{
     text_anchor::{HPos, Pos, VPos},
@@ -476,7 +477,7 @@ impl<'a> DrawingBackend for EguiBackend<'a> {
         if !galley.is_empty() {
             painter.add(TextShape {
                 angle,
-                ..TextShape::new(rect.min, galley)
+                ..TextShape::new(rect.min, galley, Color32::PLACEHOLDER)
             });
         }
 

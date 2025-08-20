@@ -11,7 +11,7 @@ fn main() {
     eframe::run_native(
         "Simple Example",
         native_options,
-        Box::new(|cc| Box::new(Simple::new(cc))),
+        Box::new(|cc| Ok(Box::new(Simple::new(cc)))),
     )
     .unwrap();
 }
@@ -20,14 +20,8 @@ struct Simple;
 
 impl Simple {
     fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        // Disable feathering as it causes artifacts
+        // Enable light mode
         let context = &cc.egui_ctx;
-
-        context.tessellation_options_mut(|tess_options| {
-            tess_options.feathering = false;
-        });
-
-        // Also enable light mode
         context.set_visuals(Visuals::light());
 
         Self

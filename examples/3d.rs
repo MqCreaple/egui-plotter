@@ -15,7 +15,7 @@ fn main() {
     eframe::run_native(
         "3d Example",
         native_options,
-        Box::new(|cc| Box::new(ThreeD::new(cc))),
+        Box::new(|cc| Ok(Box::new(ThreeD::new(cc)))),
     )
     .unwrap();
 }
@@ -30,14 +30,8 @@ struct ThreeD {
 
 impl ThreeD {
     fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        // Disable feathering as it causes artifacts
+        // Enable light mode
         let context = &cc.egui_ctx;
-
-        context.tessellation_options_mut(|tess_options| {
-            tess_options.feathering = false;
-        });
-
-        // Also enable light mode
         context.set_visuals(Visuals::light());
 
         Self {
@@ -62,8 +56,8 @@ impl eframe::App for ThreeD {
                     true => (delta.y * MOVE_SCALE, -delta.x * MOVE_SCALE),
                     false => (self.chart_pitch_vel, self.chart_yaw_vel),
                 };
-
-                let scale_delta = input.scroll_delta.y * SCROLL_SCALE;
+              
+                let scale_delta = input.smooth_scroll_delta.y * SCROLL_SCALE;
 
                 (pitch_delta, yaw_delta, scale_delta)
             });

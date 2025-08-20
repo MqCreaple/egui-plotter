@@ -12,7 +12,7 @@ fn main() {
     eframe::run_native(
         "ParaChart Example",
         native_options,
-        Box::new(|cc| Box::new(ParaChart::new(cc))),
+        Box::new(|cc| Ok(Box::new(ParaChart::new(cc)))),
     )
     .unwrap();
 }
@@ -23,14 +23,8 @@ struct ParaChart {
 
 impl ParaChart {
     fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        // Disable feathering as it causes artifacts
+        // Enable light mode
         let context = &cc.egui_ctx;
-
-        context.tessellation_options_mut(|tess_options| {
-            tess_options.feathering = false;
-        });
-
-        // Also enable light mode
         context.set_visuals(Visuals::light());
 
         // We use data to adjust the range of the chart. This can be useful for
