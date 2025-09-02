@@ -4,7 +4,7 @@ mod backend;
 mod chart;
 pub mod charts;
 
-pub use backend::{EguiBackend, EguiBackendError};
+pub use backend::{EguiBackend, EguiBackendError, BgImageSize};
 pub use chart::{
     Chart, MouseButton, MouseConfig, Transform, DEFAULT_MOVE_SCALE, DEFAULT_SCROLL_SCALE,
 };

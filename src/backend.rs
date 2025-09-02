@@ -5,6 +5,8 @@ use std::f32::consts::FRAC_PI_2;
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::ops::{Add, AddAssign, MulAssign, Sub, SubAssign};
 
+use egui::load::SizedTexture;
+use egui::{pos2, vec2, Painter, TextureId, Vec2};
 use egui::{
     epaint::{PathShape, TextShape},
     Align, Align2, Color32, FontFamily as EguiFontFamily, FontId, Pos2, Rect, Stroke, Ui, CornerRadius,
@@ -174,6 +176,75 @@ impl From<EguiBackendColor> for Color32 {
     }
 }
 
+/// What size to draw the image at
+pub enum BgImageSize {
+    /// Stretch the image to fit to the corners of the chart
+    Fill,
+    /// Scale the image up at a fixed ratio, W:H
+    Ratio(f32, f32),
+    /// Scale the image to fit the chart but not deviate from it's original aspect ratio.
+    Fit,
+    /// Do not scale the image at all
+    Original,
+    /// Set the image size to an exact value, W*H
+    Exact(f32, f32),
+}
+
+impl BgImageSize {
+    fn size_from_bounds(self, bounds: Rect, ui: &Ui, texture: TextureId) -> Rect {
+        match self {
+            Self::Fill => bounds,
+            Self::Ratio(x, y) => {
+                let bounds_width = bounds.width();
+                let bounds_height = bounds.height();
+
+                if bounds_width == 0.0 || bounds_height == 0.0 || x == 0.0 || y == 0.0 {
+                    return bounds;
+                }
+
+                let size_max = bounds_width.max(bounds_height);
+
+                let normalized_ratio = vec2(x, y).normalized();
+
+                let img_wh_max = normalized_ratio * size_max;
+
+                let scale = (bounds_width / img_wh_max.x).min(bounds_height / img_wh_max.y);
+
+                let image_wh = img_wh_max * scale;
+                
+                Rect::from_center_size(bounds.center(), image_wh)
+            }
+            Self::Fit => {
+                let original_bounds = Self::Original.size_from_bounds(bounds, ui, texture);
+
+                let width = original_bounds.width();
+                let height = original_bounds.height();
+
+                Self::Ratio(width, height).size_from_bounds(bounds, ui, texture)
+            },
+            Self::Original => {
+                let tex_manager_rwlock = ui.ctx().tex_manager();
+                let tex_manager_rwlock_reader = tex_manager_rwlock.read();
+                let tex_meta_result = tex_manager_rwlock_reader.meta(texture);
+
+                let (width, height) = match tex_meta_result {
+                    Some(meta) => {
+                        let [width, height] = meta.size;
+
+                        (width as f32, height as f32)
+                    },
+                    None => {
+                        return bounds;
+                    }
+                };
+
+                Rect::from_center_size(bounds.center(), vec2(width, height))
+            }
+            Self::Exact(w, h) => Rect::from_center_size(bounds.center(), vec2(w, h)),
+        }
+    }
+}
+
 /// Plotter backend for egui; simply provide a reference to the ui element to
 /// use.
 pub struct EguiBackend<'a> {
@@ -181,18 +252,35 @@ pub struct EguiBackend<'a> {
     x: i32,
     y: i32,
     scale: f32,
+    bounds: Rect,
+    painter: Painter,
 }
 
 impl<'a> EguiBackend<'a> {
     #[inline]
     /// Create a backend given a reference to a Ui.
     pub fn new(ui: &'a Ui) -> Self {
+        let bounds = ui.max_rect();
+
         Self {
             ui,
             x: 0,
             y: 0,
             scale: 1.0,
+            bounds,
+            painter: ui.painter().with_clip_rect(bounds)
         }
+    }
+
+    /// Draw a background image for your chart given a texture id.
+    ///
+    /// The image is drawn when this fuction is called.
+    pub fn bg_image(self, image_id: TextureId, size: BgImageSize) -> Self {
+        let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
+        let image_bounds = size.size_from_bounds(self.bounds, self.ui, image_id);
+        self.painter.image(image_id, image_bounds, uv, Color32::WHITE);
+
+        self
     }
 
     #[inline]
@@ -258,10 +346,7 @@ impl<'a> DrawingBackend for EguiBackend<'a> {
         point: (i32, i32),
         color: BackendColor,
     ) -> Result<(), DrawingErrorKind<Self::ErrorType>> {
-        let bounds = self.ui.max_rect();
-        let painter = self.ui.painter().with_clip_rect(bounds);
-
-        let p0 = self.point_transform(EguiBackendCoord::from(point), bounds);
+        let p0 = self.point_transform(EguiBackendCoord::from(point), self.bounds);
 
         let p1 = p0 + 1.0;
 
@@ -269,7 +354,7 @@ impl<'a> DrawingBackend for EguiBackend<'a> {
 
         let stroke = Stroke::new(1.0, color);
 
-        painter.line_segment([p0.into(), p1.into()], stroke);
+        self.painter.line_segment([p0.into(), p1.into()], stroke);
 
         Ok(())
     }
@@ -280,17 +365,14 @@ impl<'a> DrawingBackend for EguiBackend<'a> {
         to: (i32, i32),
         style: &S,
     ) -> Result<(), DrawingErrorKind<Self::ErrorType>> {
-        let bounds = self.ui.max_rect();
-        let painter = self.ui.painter().with_clip_rect(bounds);
-
-        let p0 = self.point_transform(EguiBackendCoord::from(from), bounds);
-        let p1 = self.point_transform(EguiBackendCoord::from(to), bounds);
+        let p0 = self.point_transform(EguiBackendCoord::from(from), self.bounds);
+        let p1 = self.point_transform(EguiBackendCoord::from(to), self.bounds);
 
         let color: Color32 = EguiBackendColor::from(style.color()).into();
 
         let stroke = Stroke::new(style.stroke_width() as f32, color);
 
-        painter.line_segment([p0.into(), p1.into()], stroke);
+        self.painter.line_segment([p0.into(), p1.into()], stroke);
 
         Ok(())
     }
@@ -302,14 +384,11 @@ impl<'a> DrawingBackend for EguiBackend<'a> {
         style: &S,
         fill: bool,
     ) -> Result<(), DrawingErrorKind<Self::ErrorType>> {
-        let bounds = self.ui.max_rect();
-        let painter = self.ui.painter().with_clip_rect(bounds);
-
-        let p0 = self.point_transform(EguiBackendCoord::from(upper_left), bounds);
-        let p1 = self.point_transform(EguiBackendCoord::from(bottom_right), bounds);
+        let p0 = self.point_transform(EguiBackendCoord::from(upper_left), self.bounds);
+        let p1 = self.point_transform(EguiBackendCoord::from(bottom_right), self.bounds);
         let color: Color32 = EguiBackendColor::from(style.color()).into();
         if fill {
-            painter.rect_filled(
+            self.painter.rect_filled(
                 egui::Rect {
                     min: p0.into(),
                     max: p1.into(),
@@ -319,7 +398,7 @@ impl<'a> DrawingBackend for EguiBackend<'a> {
             );
         } else {
             let stroke = Stroke::new(style.stroke_width() as f32, color);
-            painter.rect(
+            self.painter.rect(
                 egui::Rect {
                     min: p0.into(),
                     max: p1.into(),
@@ -339,13 +418,10 @@ impl<'a> DrawingBackend for EguiBackend<'a> {
         path: I,
         style: &S,
     ) -> Result<(), DrawingErrorKind<Self::ErrorType>> {
-        let bounds = self.ui.max_rect();
-        let painter = self.ui.painter().with_clip_rect(bounds);
-
         let points: Vec<Pos2> = path
             .into_iter()
             .map(|point| {
-                let point = self.point_transform(EguiBackendCoord::from(point), bounds);
+                let point = self.point_transform(EguiBackendCoord::from(point), self.bounds);
 
                 point.into()
             })
@@ -357,7 +433,7 @@ impl<'a> DrawingBackend for EguiBackend<'a> {
 
         let shape = PathShape::line(points, stroke);
 
-        painter.add(shape);
+        self.painter.add(shape);
         Ok(())
     }
 
@@ -368,16 +444,13 @@ impl<'a> DrawingBackend for EguiBackend<'a> {
         style: &S,
         fill: bool,
     ) -> Result<(), DrawingErrorKind<Self::ErrorType>> {
-        let bounds = self.ui.max_rect();
-        let painter = self.ui.painter().with_clip_rect(bounds);
-
-        let center = self.point_transform(EguiBackendCoord::from(center), bounds);
+        let center = self.point_transform(EguiBackendCoord::from(center), self.bounds);
         let color: Color32 = EguiBackendColor::from(style.color()).into();
         if fill {
-            painter.circle_filled(center.into(), radius as _, color);
+            self.painter.circle_filled(center.into(), radius as _, color);
         } else {
             let stroke = Stroke::new(style.stroke_width() as f32, color);
-            painter.circle(center.into(), radius as _, Color32::TRANSPARENT, stroke);
+            self.painter.circle(center.into(), radius as _, Color32::TRANSPARENT, stroke);
         }
 
         Ok(())
@@ -388,13 +461,10 @@ impl<'a> DrawingBackend for EguiBackend<'a> {
         vert: I,
         style: &S,
     ) -> Result<(), DrawingErrorKind<Self::ErrorType>> {
-        let bounds = self.ui.max_rect();
-        let painter = self.ui.painter().with_clip_rect(bounds);
-
         let points: Vec<Pos2> = vert
             .into_iter()
             .map(|point| {
-                let point = self.point_transform(EguiBackendCoord::from(point), bounds);
+                let point = self.point_transform(EguiBackendCoord::from(point), self.bounds);
 
                 point.into()
             })
@@ -406,7 +476,7 @@ impl<'a> DrawingBackend for EguiBackend<'a> {
 
         let shape = PathShape::convex_polygon(points, color, stroke);
 
-        painter.add(shape);
+        self.painter.add(shape);
 
         Ok(())
     }
@@ -417,10 +487,7 @@ impl<'a> DrawingBackend for EguiBackend<'a> {
         style: &TStyle,
         pos: (i32, i32),
     ) -> Result<(), DrawingErrorKind<Self::ErrorType>> {
-        let bounds = self.ui.max_rect();
-        let painter = self.ui.painter().with_clip_rect(bounds);
-
-        let pos = self.point_transform(EguiBackendCoord::from(pos), bounds);
+        let pos = self.point_transform(EguiBackendCoord::from(pos), self.bounds);
 
         let font_size = style.size() as f32;
         let font_family = match style.family() {
@@ -472,10 +539,10 @@ impl<'a> DrawingBackend for EguiBackend<'a> {
         for _ in 0..rotations {
             rotate(&mut anchor)
         }
-        let galley = painter.layout_no_wrap(text.to_string(), font, color);
+        let galley = self.painter.layout_no_wrap(text.to_string(), font, color);
         let rect = anchor.anchor_rect(Rect::from_min_size(pos.into(), galley.size()));
         if !galley.is_empty() {
-            painter.add(TextShape {
+            self.painter.add(TextShape {
                 angle,
                 ..TextShape::new(rect.min, galley, Color32::PLACEHOLDER)
             });
