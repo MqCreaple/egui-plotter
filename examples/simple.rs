@@ -3,7 +3,7 @@
 //! [plotters](https://docs.rs/plotters/0.3.4/plotters/index.html#quick-start)
 
 use eframe::egui::{self, CentralPanel, Visuals};
-use egui_plotter::EguiBackend;
+use egui_plotter::{EguiBackend, PlotterCanvas};
 use plotters::prelude::*;
 
 fn main() {
@@ -31,35 +31,39 @@ impl Simple {
 impl eframe::App for Simple {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         CentralPanel::default().show(ctx, |ui| {
-            let root = EguiBackend::new(ui).into_drawing_area();
-            root.fill(&WHITE).unwrap();
-            let mut chart = ChartBuilder::on(&root)
-                .caption("y=x^2", ("sans-serif", 50).into_font())
-                .margin(5)
-                .x_label_area_size(30)
-                .y_label_area_size(30)
-                .build_cartesian_2d(-1f32..1f32, -0.1f32..1f32)
-                .unwrap();
+            let plotter_canvas = PlotterCanvas::with_cb(|ui| {
+                let root = EguiBackend::new(ui).into_drawing_area();
+                root.fill(&WHITE).unwrap();
+                let mut chart = ChartBuilder::on(&root)
+                    .caption("y=x^2", ("sans-serif", 50).into_font())
+                    .margin(5)
+                    .x_label_area_size(30)
+                    .y_label_area_size(30)
+                    .build_cartesian_2d(-1f32..1f32, -0.1f32..1f32)
+                    .unwrap();
 
-            chart.configure_mesh().draw().unwrap();
+                chart.configure_mesh().draw().unwrap();
 
-            chart
-                .draw_series(LineSeries::new(
-                    (-50..=50).map(|x| x as f32 / 50.0).map(|x| (x, x * x)),
-                    &RED,
-                ))
-                .unwrap()
-                .label("y = x^2")
-                .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], RED));
+                chart
+                    .draw_series(LineSeries::new(
+                        (-50..=50).map(|x| x as f32 / 50.0).map(|x| (x, x * x)),
+                        &RED,
+                    ))
+                    .unwrap()
+                    .label("y = x^2")
+                    .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], RED));
 
-            chart
-                .configure_series_labels()
-                .background_style(WHITE.mix(0.8))
-                .border_style(BLACK)
-                .draw()
-                .unwrap();
+                chart
+                    .configure_series_labels()
+                    .background_style(WHITE.mix(0.8))
+                    .border_style(BLACK)
+                    .draw()
+                    .unwrap();
 
-            root.present().unwrap();
+                root.present().unwrap();
+            });
+
+            ui.add(plotter_canvas);
         });
     }
 }
