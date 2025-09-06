@@ -30,7 +30,7 @@ impl TimeData {
     pub fn new(points: &[(f32, f32)], unit: &str, caption: &str) -> Self {
         let points: Vec<(f32, f32, f32)> = points
             .into_iter()
-            .map(|(data, time)| (*data, *time, *time))
+            .map(|(time, data)| (*time, *data, *time))
             .collect();
 
         let chart = XyTimeData::new(&points, "seconds", unit, caption);
