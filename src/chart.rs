@@ -371,7 +371,7 @@ impl<Data> Chart<Data> {
 
             // Adjust zoom if zoom is enabled
             if self.mouse.zoom {
-                let zoom_delta = input.raw_scroll_delta.y * self.mouse.zoom_scale;
+                let zoom_delta = input.smooth_scroll_delta.y * self.mouse.zoom_scale;
 
                 transform.zoom *= f64::exp(zoom_delta as f64);
             }
