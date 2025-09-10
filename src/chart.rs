@@ -76,6 +76,20 @@ impl MouseButton {
             Self::Secondary => pointer.secondary_down(),
         }
     }
+
+    /// See if the mouse is above the given UI widget. This does not require the mouse to be active.
+    pub fn is_on_ui(pointer: &PointerState, ui: &Ui) -> bool {
+        ui.is_enabled() && pointer.latest_pos().map_or(true, |pos| {
+            ui.clip_rect().contains(pos)
+        })
+    }
+
+    /// See if the mouse button is down on the given UI widget.
+    /// 
+    /// This is to prevent the mouse action activates while the mouse is not on the UI.
+    pub fn is_down_on_ui(&self, pointer: &PointerState, ui: &Ui) -> bool {
+        self.is_down(pointer) && Self::is_on_ui(pointer, ui)
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -352,7 +366,7 @@ impl<Data> Chart<Data> {
             let delta = pointer.delta();
 
             // Adjust the pitch/yaw if the primary button is pressed and rotation is enabled
-            if self.mouse.rotate && self.mouse.rotate_bind.is_down(pointer) {
+            if self.mouse.rotate && self.mouse.rotate_bind.is_down_on_ui(pointer, ui) {
                 let pitch_delta = delta.y * self.mouse.pitch_scale;
                 let yaw_delta = delta.x * self.mouse.yaw_scale;
 
@@ -361,7 +375,7 @@ impl<Data> Chart<Data> {
             }
 
             // Adjust the x/y if the middle button is down and dragging is enabled
-            if self.mouse.drag && self.mouse.drag_bind.is_down(pointer) {
+            if self.mouse.drag && self.mouse.drag_bind.is_down_on_ui(pointer, ui) {
                 let x_delta = delta.x;
                 let y_delta = delta.y;
 
@@ -370,7 +384,7 @@ impl<Data> Chart<Data> {
             }
 
             // Adjust zoom if zoom is enabled
-            if self.mouse.zoom {
+            if self.mouse.zoom && MouseButton::is_on_ui(pointer, ui) {
                 let zoom_delta = input.smooth_scroll_delta.y * self.mouse.zoom_scale;
 
                 transform.zoom *= f64::exp(zoom_delta as f64);

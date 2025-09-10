@@ -26,7 +26,7 @@ instant = { version = "0.1", features = ["wasm-bindgen"], optional = true }
 eframe = "0.32.2"
 # Hacky way to enable features during testing
 egui-plotter = { path = ".", features = ["timechart"] }
-egui_extras = { version = "0.32.1", features = ["all_loaders"] }
+egui_extras = { version = "0.32.2", features = ["all_loaders"] }
 image = { version = "0.25", features = ["png"] } # Add the types you want support for
 
 [package.metadata.docs.rs]
